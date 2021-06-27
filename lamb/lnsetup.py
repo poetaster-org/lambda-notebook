@@ -11,9 +11,11 @@ except:
     print("Warning: Failed to load IPython/Jupyter.  Some features disabled.")
 
 import lamb
+
 # note: can't import this from any other module.
 from lamb import utils, types, meta, lang, tree_mini, parsing, magics
 from lamb import combinators
+
 
 def inject_into_ipython():
     try:
@@ -38,9 +40,11 @@ def inject_into_ipython():
         print("Failed to inject lambda notebook variables")
         raise
 
+
 def reload_lamb(use_nltk_tree=None):
     # should this reload the magics?
     import imp
+
     imp.reload(lamb.utils)
     if use_nltk_tree is not None:
         # inherit default from currently running version. TODO: too confusing?
@@ -60,31 +64,37 @@ def ipython_setup():
     lamb.reload_all = reload_lamb
     inject_into_ipython()
 
+
 def install_notebooks(nb_path, package_nb_path, force=False):
     copy_nbs = False
-    #TODO: this is kind of hacky
+    # TODO: this is kind of hacky
     if nb_path[0] == "~":
         nb_path = os.path.expanduser(nb_path)
     if not os.path.exists(nb_path):
         os.makedirs(nb_path)
         copy_nbs = True
     if copy_nbs and not os.path.exists(package_nb_path):
-        print("Path not found for notebooks to install: '%s'" % package_nb_path,
-                    flush=True)
+        print(
+            "Path not found for notebooks to install: '%s'" % package_nb_path,
+            flush=True,
+        )
         copy_nbs = False
     if package_nb_path and (copy_nbs or force):
         errors = []
-        print("Attempting to copy installation notebooks from '%s' to '%s'"
-                % (package_nb_path, nb_path), flush=True)
+        print(
+            "Attempting to copy installation notebooks from '%s' to '%s'"
+            % (package_nb_path, nb_path),
+            flush=True,
+        )
         names = os.listdir(package_nb_path)
         for name in names:
             srcname = os.path.join(package_nb_path, name)
             destname = os.path.join(nb_path, name)
             if os.path.exists(destname):
-                pass # never overwrite anything
+                pass  # never overwrite anything
             try:
                 if os.path.islink(srcname):
-                    pass # ignore symlinks
+                    pass  # ignore symlinks
                 elif os.path.isdir(srcname):
                     shutil.copytree(srcname, destname)
                 else:
@@ -98,6 +108,7 @@ def install_notebooks(nb_path, package_nb_path, force=False):
         if errors:
             raise shutil.Error(errors)
 
+
 kernelspec_str = """{
  "argv": ["python3", "-m", "ipykernel",
           "-f", "{connection_file}", "%s"],
@@ -105,17 +116,21 @@ kernelspec_str = """{
  "language": "python"
 }"""
 
+
 def build_json():
     if sys.version_info[0] != 3:
-        raise Exception("Could not install lambda notebook kernel from "
-                        "non-python 3, please run with python 3.")
+        raise Exception(
+            "Could not install lambda notebook kernel from "
+            "non-python 3, please run with python 3."
+        )
     executable = sys.executable
     kernelspec_json = {
         "argv": [sys.executable, "-m", "ipykernel", "-f", "{connection_file}"],
         "display_name": "Lambda Notebook (Python 3)",
-        "language": "python"
+        "language": "python",
     }
     return kernelspec_json
+
 
 def install_kernelspec(lib_dir, kernel_dir=None, user=True):
     if kernel_dir is None:
@@ -128,38 +143,44 @@ def install_kernelspec(lib_dir, kernel_dir=None, user=True):
         # windows paths this may fail horribly on unix paths with backslashes,
         # but I don't have a better workaround for now
         lib_dir = lib_dir.replace("\\", "\\\\\\\\")
-        injection_path_opt = ("--IPKernelApp.exec_lines=[\"import sys\",\"sys.path.insert(1,\\\"%s\\\")\", \"import lamb.lnsetup\", \"lamb.lnsetup.ipython_setup()\"]"
-                                % lib_dir)
+        injection_path_opt = (
+            '--IPKernelApp.exec_lines=["import sys","sys.path.insert(1,\\"%s\\")", "import lamb.lnsetup", "lamb.lnsetup.ipython_setup()"]'
+            % lib_dir
+        )
     else:
-        injection_path_opt = "--IPKernelApp.exec_lines=[\"import lamb.lnsetup\", \"lamb.lnsetup.ipython_setup()\"]"
+        injection_path_opt = '--IPKernelApp.exec_lines=["import lamb.lnsetup", "lamb.lnsetup.ipython_setup()"]'
 
     k_json = build_json()
     k_json["argv"].append(injection_path_opt)
     k_json_filename = os.path.join(kernel_dir, "kernel.json")
-    #print(k_json)
-    with open(k_json_filename, 'w') as k_json_file:
+    # print(k_json)
+    with open(k_json_filename, "w") as k_json_file:
         json.dump(k_json, k_json_file, sort_keys=True, indent=4)
 
     kernelspec.install_kernel_spec(kernel_dir, user=user, replace=True)
-    location = kernelspec.find_kernel_specs()['lambda-notebook']
+    location = kernelspec.find_kernel_specs()["lambda-notebook"]
     return location
+
 
 def launch_lambda_console(args, lib_dir=None, kernel_dir=None):
     install_kernelspec(lib_dir, kernel_dir)
 
     c = Config()
     # no idea why this doesn't work, but it doesn't...
-    #c.IPythonConsoleApp.kernel_name="lambda-notebook"
+    # c.IPythonConsoleApp.kernel_name="lambda-notebook"
     c.InteractiveShellApp.exec_lines = [
-            "import sys; sys.path.insert(1,r\"%s\"); import lamb.lnsetup; lamb.lnsetup.ipython_setup()"
-            % lib_dir]
+        'import sys; sys.path.insert(1,r"%s"); import lamb.lnsetup; lamb.lnsetup.ipython_setup()'
+        % lib_dir
+    ]
 
     app = TerminalIPythonApp.instance(config=c)
     app.initialize(argv=args[1:])
     app.start()
 
-def launch_lambda_notebook(args, lab=False, nb_path=None, lib_dir=None,
-                                package_nb_path=None, kernel_dir=None):
+
+def launch_lambda_notebook(
+    args, lab=False, nb_path=None, lib_dir=None, package_nb_path=None, kernel_dir=None
+):
     # originally based on branded notebook recipe here:
     #   https://gist.github.com/timo/1497850
     # that recipe is for a much earlier version of IPython, so the method is
@@ -175,13 +196,13 @@ def launch_lambda_notebook(args, lab=False, nb_path=None, lib_dir=None,
         nb_path = os.path.expanduser("~/Documents/lambda_notebook/")
         if nb_path[0] == "~":
             raise Error("Unable to locate home directory")
-        #TODO: need something more general here
+        # TODO: need something more general here
     if not os.path.exists(nb_path):
         try:
             install_notebooks(nb_path, package_nb_path, force=False)
         except shutil.Error as err:
             print(err)
-        #os.makedirs(nb_path)
+        # os.makedirs(nb_path)
 
     c.NotebookApp.notebook_dir = nb_path
 
@@ -189,7 +210,8 @@ def launch_lambda_notebook(args, lab=False, nb_path=None, lib_dir=None,
     if lab:
         try:
             from jupyterlab import labapp
-            app = labapp.LabApp(config = c)
+
+            app = labapp.LabApp(config=c)
         except:
             print("Failed to start jupyterlab, falling back on notebook.")
             app = None
@@ -197,7 +219,7 @@ def launch_lambda_notebook(args, lab=False, nb_path=None, lib_dir=None,
         app = notebookapp.NotebookApp(config=c)
 
     app.initialize(args[1:])
-     
+
     try:
         app.start()
     except KeyboardInterrupt:
@@ -205,9 +227,9 @@ def launch_lambda_notebook(args, lab=False, nb_path=None, lib_dir=None,
     finally:
         pass
 
+
 def version_str():
     s = "Lambda notebook version " + lamb.__version__
     if not lamb.__release__:
         s += " (development version)"
     return s
-

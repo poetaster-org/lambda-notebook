@@ -23,25 +23,30 @@ syntax trees and morphological trees.
 import re
 import string
 
-#from nltk.grammar import Production, Nonterminal
-#from nltk.probability import ProbabilisticMixIn
-#from nltk.util import slice_bounds
+# from nltk.grammar import Production, Nonterminal
+# from nltk.probability import ProbabilisticMixIn
+# from nltk.util import slice_bounds
 
 
 # stuff from nltk.compat
-string_types = str,
-integer_types = int,
+string_types = (str,)
+integer_types = (int,)
 PY3 = True
+
 
 def b(s):
     return s.encode("latin-1")
 
+
 def u(s):
     return s
 
+
 def _was_fixed(method):
-    return (getattr(method, "_nltk_compat_7bit", False) or
-            getattr(method, "_nltk_compat_transliterated", False))
+    return getattr(method, "_nltk_compat_7bit", False) or getattr(
+        method, "_nltk_compat_transliterated", False
+    )
+
 
 def python_2_unicode_compatible(klass):
     """
@@ -90,7 +95,7 @@ def unicode_repr(obj):
         return repr(obj)
 
     # Python 2.x
-    if hasattr(obj, 'unicode_repr'):
+    if hasattr(obj, "unicode_repr"):
         return obj.unicode_repr()
 
     if isinstance(obj, unicode):
@@ -121,7 +126,8 @@ def slice_bounds(sequence, slice_obj, allow_step=False):
     # value tuple.
     if allow_step:
         step = slice_obj.step
-        if step is None: step = 1
+        if step is None:
+            step = 1
         # Use a recursive call without allow_step to find the slice
         # bounds.  If step is negative, then the roles of start and
         # stop (in terms of default values, etc), are swapped.
@@ -133,29 +139,37 @@ def slice_bounds(sequence, slice_obj, allow_step=False):
 
     # Otherwise, make sure that no non-default step value is used.
     elif slice_obj.step not in (None, 1):
-        raise ValueError('slices with steps are not supported by %s' %
-                         sequence.__class__.__name__)
+        raise ValueError(
+            "slices with steps are not supported by %s" % sequence.__class__.__name__
+        )
 
     # Supply default offsets.
-    if start is None: start = 0
-    if stop is None: stop = len(sequence)
+    if start is None:
+        start = 0
+    if stop is None:
+        stop = len(sequence)
 
     # Handle negative indices.
-    if start < 0: start = max(0, len(sequence)+start)
-    if stop < 0: stop = max(0, len(sequence)+stop)
+    if start < 0:
+        start = max(0, len(sequence) + start)
+    if stop < 0:
+        stop = max(0, len(sequence) + stop)
 
     # Make sure stop doesn't go past the end of the list.  Note that
     # we avoid calculating len(sequence) if possible, because for lazy
     # sequences, calculating the length of a sequence can be expensive.
     if stop > 0:
-        try: sequence[stop-1]
-        except IndexError: stop = len(sequence)
+        try:
+            sequence[stop - 1]
+        except IndexError:
+            stop = len(sequence)
 
     # Make sure start isn't past stop.
     start = min(start, stop)
 
     # That's all folks!
     return start, stop
+
 
 @python_2_unicode_compatible
 class Tree(list):
@@ -221,24 +235,30 @@ class Tree(list):
 
     - ``Tree.fromstring(s)`` constructs a new tree by parsing the string ``s``.
     """
+
     def __init__(self, node, children=None):
         if children is None:
-            raise TypeError("%s: Expected a node value and child list "
-                                % type(self).__name__)
+            raise TypeError(
+                "%s: Expected a node value and child list " % type(self).__name__
+            )
         elif isinstance(children, string_types):
-            raise TypeError("%s() argument 2 should be a list, not a "
-                            "string" % type(self).__name__)
+            raise TypeError(
+                "%s() argument 2 should be a list, not a "
+                "string" % type(self).__name__
+            )
         else:
             list.__init__(self, children)
             self._label = node
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Comparison operators
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def __eq__(self, other):
-        return (self.__class__ is other.__class__ and
-                (self._label, list(self)) == (other._label, list(other)))
+        return self.__class__ is other.__class__ and (self._label, list(self)) == (
+            other._label,
+            list(other),
+        )
 
     def __lt__(self, other):
         if not isinstance(other, Tree):
@@ -257,22 +277,25 @@ class Tree(list):
     __le__ = lambda self, other: self < other or self == other
     __ge__ = lambda self, other: not self < other
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Disabled list operations
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def __mul__(self, v):
-        raise TypeError('Tree does not support multiplication')
-    def __rmul__(self, v):
-        raise TypeError('Tree does not support multiplication')
-    def __add__(self, v):
-        raise TypeError('Tree does not support addition')
-    def __radd__(self, v):
-        raise TypeError('Tree does not support addition')
+        raise TypeError("Tree does not support multiplication")
 
-    #////////////////////////////////////////////////////////////
+    def __rmul__(self, v):
+        raise TypeError("Tree does not support multiplication")
+
+    def __add__(self, v):
+        raise TypeError("Tree does not support addition")
+
+    def __radd__(self, v):
+        raise TypeError("Tree does not support addition")
+
+    # ////////////////////////////////////////////////////////////
     # Indexing (with support for tree positions)
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
@@ -285,48 +308,55 @@ class Tree(list):
             else:
                 return self[index[0]][index[1:]]
         else:
-            raise TypeError("%s indices must be integers, not %s" %
-                            (type(self).__name__, type(index).__name__))
+            raise TypeError(
+                "%s indices must be integers, not %s"
+                % (type(self).__name__, type(index).__name__)
+            )
 
     def __setitem__(self, index, value):
         if isinstance(index, (int, slice)):
             return list.__setitem__(self, index, value)
         elif isinstance(index, (list, tuple)):
             if len(index) == 0:
-                raise IndexError('The tree position () may not be '
-                                 'assigned to.')
+                raise IndexError("The tree position () may not be " "assigned to.")
             elif len(index) == 1:
                 self[index[0]] = value
             else:
                 self[index[0]][index[1:]] = value
         else:
-            raise TypeError("%s indices must be integers, not %s" %
-                            (type(self).__name__, type(index).__name__))
+            raise TypeError(
+                "%s indices must be integers, not %s"
+                % (type(self).__name__, type(index).__name__)
+            )
 
     def __delitem__(self, index):
         if isinstance(index, (int, slice)):
             return list.__delitem__(self, index)
         elif isinstance(index, (list, tuple)):
             if len(index) == 0:
-                raise IndexError('The tree position () may not be deleted.')
+                raise IndexError("The tree position () may not be deleted.")
             elif len(index) == 1:
                 del self[index[0]]
             else:
                 del self[index[0]][index[1:]]
         else:
-            raise TypeError("%s indices must be integers, not %s" %
-                            (type(self).__name__, type(index).__name__))
+            raise TypeError(
+                "%s indices must be integers, not %s"
+                % (type(self).__name__, type(index).__name__)
+            )
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Basic tree operations
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def _get_node(self):
         """Outdated method to access the node value; use the label() method instead."""
         raise NotImplementedError("Use label() to access a node label.")
+
     def _set_node(self, value):
         """Outdated method to set the node value; use the set_label() method instead."""
         raise NotImplementedError("Use set_label() method to set a node label.")
+
     node = property(_get_node, _set_node)
 
     def label(self):
@@ -418,7 +448,7 @@ class Tree(list):
                 max_child_height = max(max_child_height, 1)
         return 1 + max_child_height
 
-    def treepositions(self, order='preorder'):
+    def treepositions(self, order="preorder"):
         """
             >>> t = Tree.fromstring("(S (NP (D the) (N dog)) (VP (V chased) (NP (D the) (N cat))))")
             >>> t.treepositions() # doctest: +ELLIPSIS
@@ -432,14 +462,16 @@ class Tree(list):
             ``leaves``.
         """
         positions = []
-        if order in ('preorder', 'bothorder'): positions.append( () )
+        if order in ("preorder", "bothorder"):
+            positions.append(())
         for i, child in enumerate(self):
             if isinstance(child, Tree):
                 childpos = child.treepositions(order)
-                positions.extend((i,)+p for p in childpos)
+                positions.extend((i,) + p for p in childpos)
             else:
-                positions.append( (i,) )
-        if order in ('postorder', 'bothorder'): positions.append( () )
+                positions.append((i,))
+        if order in ("postorder", "bothorder"):
+            positions.append(())
         return positions
 
     def subtrees(self, filter=None):
@@ -518,19 +550,22 @@ class Tree(list):
         :raise IndexError: If this tree contains fewer than ``index+1``
             leaves, or if ``index<0``.
         """
-        if index < 0: raise IndexError('index must be non-negative')
+        if index < 0:
+            raise IndexError("index must be non-negative")
 
         stack = [(self, ())]
         while stack:
             value, treepos = stack.pop()
             if not isinstance(value, Tree):
-                if index == 0: return treepos
-                else: index -= 1
+                if index == 0:
+                    return treepos
+                else:
+                    index -= 1
             else:
-                for i in range(len(value)-1, -1, -1):
-                    stack.append( (value[i], treepos+(i,)) )
+                for i in range(len(value) - 1, -1, -1):
+                    stack.append((value[i], treepos + (i,)))
 
-        raise IndexError('index must be less than or equal to len(self)')
+        raise IndexError("index must be less than or equal to len(self)")
 
     def treeposition_spanning_leaves(self, start, end):
         """
@@ -539,22 +574,29 @@ class Tree(list):
         :raise ValueError: if ``end <= start``
         """
         if end <= start:
-            raise ValueError('end must be greater than start')
+            raise ValueError("end must be greater than start")
         # Find the tree positions of the start & end leaves, and
         # take the longest common subsequence.
         start_treepos = self.leaf_treeposition(start)
-        end_treepos = self.leaf_treeposition(end-1)
+        end_treepos = self.leaf_treeposition(end - 1)
         # Find the first index where they mismatch:
         for i in range(len(start_treepos)):
             if i == len(end_treepos) or start_treepos[i] != end_treepos[i]:
                 return start_treepos[:i]
         return start_treepos
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Transforms
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
-    def chomsky_normal_form(self, factor="right", horzMarkov=None, vertMarkov=0, childChar="|", parentChar="^"):
+    def chomsky_normal_form(
+        self,
+        factor="right",
+        horzMarkov=None,
+        vertMarkov=0,
+        childChar="|",
+        parentChar="^",
+    ):
         """
         This method can modify a tree in three ways:
 
@@ -579,9 +621,12 @@ class Tree(list):
         :type  parentChar: str
         """
         from nltk.treetransforms import chomsky_normal_form
+
         chomsky_normal_form(self, factor, horzMarkov, vertMarkov, childChar, parentChar)
 
-    def un_chomsky_normal_form(self, expandUnary = True, childChar = "|", parentChar = "^", unaryChar = "+"):
+    def un_chomsky_normal_form(
+        self, expandUnary=True, childChar="|", parentChar="^", unaryChar="+"
+    ):
         """
         This method modifies the tree in three ways:
 
@@ -601,9 +646,10 @@ class Tree(list):
         :type  unaryChar: str
         """
         from nltk.treetransforms import un_chomsky_normal_form
+
         un_chomsky_normal_form(self, expandUnary, childChar, parentChar, unaryChar)
 
-    def collapse_unary(self, collapsePOS = False, collapseRoot = False, joinChar = "+"):
+    def collapse_unary(self, collapsePOS=False, collapseRoot=False, joinChar="+"):
         """
         Collapse subtrees with a single child (ie. unary productions)
         into a new non-terminal (Tree node) joined by 'joinChar'.
@@ -623,11 +669,12 @@ class Tree(list):
         :type  joinChar: str
         """
         from nltk.treetransforms import collapse_unary
+
         collapse_unary(self, collapsePOS, collapseRoot, joinChar)
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Convert, copy
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     @classmethod
     def convert(cls, tree):
@@ -646,30 +693,41 @@ class Tree(list):
             return tree
 
     def copy(self, deep=False):
-        if not deep: return type(self)(self._label, self)
-        else: return type(self).convert(self)
+        if not deep:
+            return type(self)(self._label, self)
+        else:
+            return type(self).convert(self)
 
-    def _frozen_class(self): return ImmutableTree
+    def _frozen_class(self):
+        return ImmutableTree
+
     def freeze(self, leaf_freezer=None):
         frozen_class = self._frozen_class()
         if leaf_freezer is None:
             newcopy = frozen_class.convert(self)
         else:
             newcopy = self.copy(deep=True)
-            for pos in newcopy.treepositions('leaves'):
+            for pos in newcopy.treepositions("leaves"):
                 newcopy[pos] = leaf_freezer(newcopy[pos])
             newcopy = frozen_class.convert(newcopy)
-        hash(newcopy) # Make sure the leaves are hashable.
+        hash(newcopy)  # Make sure the leaves are hashable.
         return newcopy
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Parsing
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     @classmethod
-    def fromstring(cls, s, brackets='()', read_node=None, read_leaf=None,
-              node_pattern=None, leaf_pattern=None,
-              remove_empty_top_bracketing=False):
+    def fromstring(
+        cls,
+        s,
+        brackets="()",
+        read_node=None,
+        read_leaf=None,
+        node_pattern=None,
+        leaf_pattern=None,
+        remove_empty_top_bracketing=False,
+    ):
         """
         Read a bracketed tree string and return the resulting tree.
         Trees are represented as nested brackettings, such as::
@@ -720,28 +778,31 @@ class Tree(list):
         :rtype: Tree
         """
         if not isinstance(brackets, string_types) or len(brackets) != 2:
-            raise TypeError('brackets must be a length-2 string')
-        if re.search('\s', brackets):
-            raise TypeError('whitespace brackets not allowed')
+            raise TypeError("brackets must be a length-2 string")
+        if re.search("\s", brackets):
+            raise TypeError("whitespace brackets not allowed")
         # Construct a regexp that will tokenize the string.
         open_b, close_b = brackets
         open_pattern, close_pattern = (re.escape(open_b), re.escape(close_b))
         if node_pattern is None:
-            node_pattern = '[^\s%s%s]+' % (open_pattern, close_pattern)
+            node_pattern = "[^\s%s%s]+" % (open_pattern, close_pattern)
         if leaf_pattern is None:
-            leaf_pattern = '[^\s%s%s]+' % (open_pattern, close_pattern)
-        token_re = re.compile('%s\s*(%s)?|%s|(%s)' % (
-            open_pattern, node_pattern, close_pattern, leaf_pattern))
+            leaf_pattern = "[^\s%s%s]+" % (open_pattern, close_pattern)
+        token_re = re.compile(
+            "%s\s*(%s)?|%s|(%s)"
+            % (open_pattern, node_pattern, close_pattern, leaf_pattern)
+        )
         # Walk through each token, updating a stack of trees.
-        stack = [(None, [])] # list of (node, children) tuples
+        stack = [(None, [])]  # list of (node, children) tuples
         for match in token_re.finditer(s):
             token = match.group()
             # Beginning of a tree/subtree
             if token[0] == open_b:
                 if len(stack) == 1 and len(stack[0][1]) > 0:
-                    cls._parse_error(s, match, 'end-of-string')
+                    cls._parse_error(s, match, "end-of-string")
                 label = token[1:].lstrip()
-                if read_node is not None: label = read_node(label)
+                if read_node is not None:
+                    label = read_node(label)
                 stack.append((label, []))
             # End of a tree/subtree
             elif token == close_b:
@@ -749,21 +810,22 @@ class Tree(list):
                     if len(stack[0][1]) == 0:
                         cls._parse_error(s, match, open_b)
                     else:
-                        cls._parse_error(s, match, 'end-of-string')
+                        cls._parse_error(s, match, "end-of-string")
                 label, children = stack.pop()
                 stack[-1][1].append(cls(label, children))
             # Leaf node
             else:
                 if len(stack) == 1:
                     cls._parse_error(s, match, open_b)
-                if read_leaf is not None: token = read_leaf(token)
+                if read_leaf is not None:
+                    token = read_leaf(token)
                 stack[-1][1].append(token)
 
         # check that we got exactly one complete tree.
         if len(stack) > 1:
-            cls._parse_error(s, 'end-of-string', close_b)
+            cls._parse_error(s, "end-of-string", close_b)
         elif len(stack[0][1]) == 0:
-            cls._parse_error(s, 'end-of-string', open_b)
+            cls._parse_error(s, "end-of-string", open_b)
         else:
             assert stack[0][0] is None
             assert len(stack[0][1]) == 1
@@ -771,7 +833,7 @@ class Tree(list):
 
         # If the tree has an extra level with node='', then get rid of
         # it.  E.g.: "((S (NP ...) (VP ...)))"
-        if remove_empty_top_bracketing and tree._label == '' and len(tree) == 1:
+        if remove_empty_top_bracketing and tree._label == "" and len(tree) == 1:
             tree = tree[0]
         # return the tree.
         return tree
@@ -785,32 +847,38 @@ class Tree(list):
         :param expecting: what we expected to see instead.
         """
         # Construct a basic error message
-        if match == 'end-of-string':
-            pos, token = len(s), 'end-of-string'
+        if match == "end-of-string":
+            pos, token = len(s), "end-of-string"
         else:
             pos, token = match.start(), match.group()
-        msg = '%s.read(): expected %r but got %r\n%sat index %d.' % (
-            cls.__name__, expecting, token, ' '*12, pos)
+        msg = "%s.read(): expected %r but got %r\n%sat index %d." % (
+            cls.__name__,
+            expecting,
+            token,
+            " " * 12,
+            pos,
+        )
         # Add a display showing the error token itsels:
-        s = s.replace('\n', ' ').replace('\t', ' ')
+        s = s.replace("\n", " ").replace("\t", " ")
         offset = pos
-        if len(s) > pos+10:
-            s = s[:pos+10]+'...'
+        if len(s) > pos + 10:
+            s = s[: pos + 10] + "..."
         if pos > 10:
-            s = '...'+s[pos-10:]
+            s = "..." + s[pos - 10 :]
             offset = 13
-        msg += '\n%s"%s"\n%s^' % (' '*16, s, ' '*(17+offset))
+        msg += '\n%s"%s"\n%s^' % (" " * 16, s, " " * (17 + offset))
         raise ValueError(msg)
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Visualization & String Representation
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def draw(self):
         """
         Open a new window containing a graphical diagram of this tree.
         """
         from nltk.draw.tree import draw_trees
+
         draw_trees(self)
 
     def pretty_print(self, sentence=None, highlight=(), stream=None, **kwargs):
@@ -820,13 +888,16 @@ class Tree(list):
         `nltk.treeprettyprinter.TreePrettyPrinter`.
         """
         from nltk.treeprettyprinter import TreePrettyPrinter
-        print(TreePrettyPrinter(self, sentence, highlight).text(**kwargs),
-              file=stream)
-        
+
+        print(TreePrettyPrinter(self, sentence, highlight).text(**kwargs), file=stream)
 
     def __repr__(self):
         childstr = ", ".join(unicode_repr(c) for c in self)
-        return '%s(%s, [%s])' % (type(self).__name__, unicode_repr(self._label), childstr)
+        return "%s(%s, [%s])" % (
+            type(self).__name__,
+            unicode_repr(self._label),
+            childstr,
+        )
 
     # def _repr_png_(self):
     #     """
@@ -876,7 +947,7 @@ class Tree(list):
             stream = None
         print(self.pformat(**kwargs), file=stream)
 
-    def pformat(self, margin=70, indent=0, nodesep='', parens='()', quotes=False):
+    def pformat(self, margin=70, indent=0, nodesep="", parens="()", quotes=False):
         """
         :return: A pretty-printed string representation of this tree.
         :rtype: str
@@ -898,20 +969,23 @@ class Tree(list):
 
         # If it doesn't fit on one line, then write it on multi-lines.
         if isinstance(self._label, string_types):
-            s = '%s%s%s' % (parens[0], self._label, nodesep)
+            s = "%s%s%s" % (parens[0], self._label, nodesep)
         else:
-            s = '%s%s%s' % (parens[0], unicode_repr(self._label), nodesep)
+            s = "%s%s%s" % (parens[0], unicode_repr(self._label), nodesep)
         for child in self:
             if isinstance(child, Tree):
-                s += '\n'+' '*(indent+2)+child.pformat(margin, indent+2,
-                                                  nodesep, parens, quotes)
+                s += (
+                    "\n"
+                    + " " * (indent + 2)
+                    + child.pformat(margin, indent + 2, nodesep, parens, quotes)
+                )
             elif isinstance(child, tuple):
-                s += '\n'+' '*(indent+2)+ "/".join(child)
+                s += "\n" + " " * (indent + 2) + "/".join(child)
             elif isinstance(child, string_types) and not quotes:
-                s += '\n'+' '*(indent+2)+ '%s' % child
+                s += "\n" + " " * (indent + 2) + "%s" % child
             else:
-                s += '\n'+' '*(indent+2)+ unicode_repr(child)
-        return s+parens[1]
+                s += "\n" + " " * (indent + 2) + unicode_repr(child)
+        return s + parens[1]
 
     def pformat_latex_qtree(self):
         r"""
@@ -931,10 +1005,10 @@ class Tree(list):
         :return: A latex qtree representation of this tree.
         :rtype: str
         """
-        reserved_chars = re.compile('([#\$%&~_\{\}])')
+        reserved_chars = re.compile("([#\$%&~_\{\}])")
 
-        pformat = self.pformat(indent=6, nodesep='', parens=('[.', ' ]'))
-        return r'\Tree ' + re.sub(reserved_chars, r'\\\1', pformat)
+        pformat = self.pformat(indent=6, nodesep="", parens=("[.", " ]"))
+        return r"\Tree " + re.sub(reserved_chars, r"\\\1", pformat)
 
     def _pformat_flat(self, nodesep, parens, quotes):
         childstrs = []
@@ -944,51 +1018,63 @@ class Tree(list):
             elif isinstance(child, tuple):
                 childstrs.append("/".join(child))
             elif isinstance(child, string_types) and not quotes:
-                childstrs.append('%s' % child)
+                childstrs.append("%s" % child)
             else:
                 childstrs.append(unicode_repr(child))
         if isinstance(self._label, string_types):
-            return '%s%s%s %s%s' % (parens[0], self._label, nodesep,
-                                    " ".join(childstrs), parens[1])
+            return "%s%s%s %s%s" % (
+                parens[0],
+                self._label,
+                nodesep,
+                " ".join(childstrs),
+                parens[1],
+            )
         else:
-            return '%s%s%s %s%s' % (parens[0], unicode_repr(self._label), nodesep,
-                                    " ".join(childstrs), parens[1])
+            return "%s%s%s %s%s" % (
+                parens[0],
+                unicode_repr(self._label),
+                nodesep,
+                " ".join(childstrs),
+                parens[1],
+            )
 
     # KGR added
     def build_display_tree(self, derivations=False, recurse=True, style=None):
         import lamb
         from lamb import display
+
         defaultstyle = {"style": "proof", "border": False}
         style = display.merge_styles(style, defaultstyle)
         leaf_style = display.HTMLNodeDisplay(**style)
         if style.get("style", "boxes") == "proof":
             node_style = display.TDProofDisplay(**style)
-        else: # "boxes"
+        else:  # "boxes"
             node_style = display.TDBoxDisplay(**style)
 
         parts = list()
         for i in range(len(self)):
             try:
-                part_i = self[i].build_display_tree(recurse=recurse,
-                                        derivations=derivations, style=style)
+                part_i = self[i].build_display_tree(
+                    recurse=recurse, derivations=derivations, style=style
+                )
             except AttributeError:
                 try:
-                    part_i = display.DisplayNode(content=self[i]._repr_html_(),
-                                                            style=leaf_style)
+                    part_i = display.DisplayNode(
+                        content=self[i]._repr_html_(), style=leaf_style
+                    )
                 except AttributeError:
-                    part_i = display.DisplayNode(str(self[i]),
-                                                            style=leaf_style)
+                    part_i = display.DisplayNode(str(self[i]), style=leaf_style)
             parts.append(part_i)
         try:
             nodetext = self.label()._repr_html_()
         except:
             nodetext = str(self.label())
-        return display.DisplayNode(content=nodetext, explanation=None,
-                                                parts=parts, style=node_style)
+        return display.DisplayNode(
+            content=nodetext, explanation=None, parts=parts, style=node_style
+        )
 
     def _repr_html_(self):
         return self.build_display_tree()._repr_html_()
-
 
 
 class ImmutableTree(Tree):
@@ -999,33 +1085,46 @@ class ImmutableTree(Tree):
         try:
             self._hash = hash((self._label, tuple(self)))
         except (TypeError, ValueError):
-            raise ValueError("%s: node value and children "
-                             "must be immutable" % type(self).__name__)
+            raise ValueError(
+                "%s: node value and children " "must be immutable" % type(self).__name__
+            )
 
     def __setitem__(self, index, value):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __setslice__(self, i, j, value):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __delitem__(self, index):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __delslice__(self, i, j):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __iadd__(self, other):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __imul__(self, other):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def append(self, v):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def extend(self, v):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def pop(self, v=None):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def remove(self, v):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def reverse(self):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def sort(self):
-        raise ValueError('%s may not be modified' % type(self).__name__)
+        raise ValueError("%s may not be modified" % type(self).__name__)
+
     def __hash__(self):
         return self._hash
 
@@ -1034,14 +1133,15 @@ class ImmutableTree(Tree):
         Set the node label.  This will only succeed the first time the
         node label is set, which should occur in ImmutableTree.__init__().
         """
-        if hasattr(self, '_label'):
-            raise ValueError('%s may not be modified' % type(self).__name__)
+        if hasattr(self, "_label"):
+            raise ValueError("%s may not be modified" % type(self).__name__)
         self._label = value
 
 
 ######################################################################
 ## Parented trees
 ######################################################################
+
 
 class AbstractParentedTree(Tree):
     """
@@ -1083,9 +1183,9 @@ class AbstractParentedTree(Tree):
                 if isinstance(child, Tree):
                     self._setparent(child, i)
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Parent management
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def _setparent(self, child, index, dry_run=False):
         """
@@ -1123,9 +1223,9 @@ class AbstractParentedTree(Tree):
         """
         raise NotImplementedError()
 
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Methods that add/remove children
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Every method that adds or removes a child must make
     # appropriate calls to _setparent() and _delparent().
 
@@ -1142,8 +1242,10 @@ class AbstractParentedTree(Tree):
 
         # del ptree[i]
         elif isinstance(index, int):
-            if index < 0: index += len(self)
-            if index < 0: raise IndexError('index out of range')
+            if index < 0:
+                index += len(self)
+            if index < 0:
+                raise IndexError("index out of range")
             # Clear the child's parent pointer.
             if isinstance(self[index], Tree):
                 self._delparent(self[index], index)
@@ -1153,7 +1255,7 @@ class AbstractParentedTree(Tree):
         elif isinstance(index, (list, tuple)):
             # del ptree[()]
             if len(index) == 0:
-                raise IndexError('The tree position () may not be deleted.')
+                raise IndexError("The tree position () may not be deleted.")
             # del ptree[(i,)]
             elif len(index) == 1:
                 del self[index[0]]
@@ -1162,8 +1264,10 @@ class AbstractParentedTree(Tree):
                 del self[index[0]][index[1:]]
 
         else:
-            raise TypeError("%s indices must be integers, not %s" %
-                            (type(self).__name__, type(index).__name__))
+            raise TypeError(
+                "%s indices must be integers, not %s"
+                % (type(self).__name__, type(index).__name__)
+            )
 
     def __setitem__(self, index, value):
         # ptree[start:stop] = value
@@ -1176,7 +1280,7 @@ class AbstractParentedTree(Tree):
             # up in an inconsistent state if an error does occur.
             for i, child in enumerate(value):
                 if isinstance(child, Tree):
-                    self._setparent(child, start + i*step, dry_run=True)
+                    self._setparent(child, start + i * step, dry_run=True)
             # clear the child pointers of all parents we're removing
             for i in range(start, stop, step):
                 if isinstance(self[i], Tree):
@@ -1186,14 +1290,16 @@ class AbstractParentedTree(Tree):
             # reversing the elements in a tree.
             for i, child in enumerate(value):
                 if isinstance(child, Tree):
-                    self._setparent(child, start + i*step)
+                    self._setparent(child, start + i * step)
             # finally, update the content of the child list itself.
             super(AbstractParentedTree, self).__setitem__(index, value)
 
         # ptree[i] = value
         elif isinstance(index, int):
-            if index < 0: index += len(self)
-            if index < 0: raise IndexError('index out of range')
+            if index < 0:
+                index += len(self)
+            if index < 0:
+                raise IndexError("index out of range")
             # if the value is not changing, do nothing.
             if value is self[index]:
                 return
@@ -1209,7 +1315,7 @@ class AbstractParentedTree(Tree):
         elif isinstance(index, (list, tuple)):
             # ptree[()] = value
             if len(index) == 0:
-                raise IndexError('The tree position () may not be assigned to.')
+                raise IndexError("The tree position () may not be assigned to.")
             # ptree[(i,)] = value
             elif len(index) == 1:
                 self[index[0]] = value
@@ -1218,8 +1324,10 @@ class AbstractParentedTree(Tree):
                 self[index[0]][index[1:]] = value
 
         else:
-            raise TypeError("%s indices must be integers, not %s" %
-                            (type(self).__name__, type(index).__name__))
+            raise TypeError(
+                "%s indices must be integers, not %s"
+                % (type(self).__name__, type(index).__name__)
+            )
 
     def append(self, child):
         if isinstance(child, Tree):
@@ -1236,16 +1344,20 @@ class AbstractParentedTree(Tree):
         # Handle negative indexes.  Note that if index < -len(self),
         # we do *not* raise an IndexError, unlike __getitem__.  This
         # is done for consistency with list.__getitem__ and list.index.
-        if index < 0: index += len(self)
-        if index < 0: index = 0
+        if index < 0:
+            index += len(self)
+        if index < 0:
+            index = 0
         # Set the child's parent, and update our child list.
         if isinstance(child, Tree):
             self._setparent(child, index)
         super(AbstractParentedTree, self).insert(index, child)
 
     def pop(self, index=-1):
-        if index < 0: index += len(self)
-        if index < 0: raise IndexError('index out of range')
+        if index < 0:
+            index += len(self)
+        if index < 0:
+            raise IndexError("index out of range")
         if isinstance(self[index], Tree):
             self._delparent(self[index], index)
         return super(AbstractParentedTree, self).pop(index)
@@ -1264,13 +1376,17 @@ class AbstractParentedTree(Tree):
     # __getitem__ etc., but use max(0, start) and max(0, stop) because
     # because negative indices are already handled *before*
     # __getslice__ is called; and we don't want to double-count them.
-    if hasattr(list, '__getslice__'):
+    if hasattr(list, "__getslice__"):
+
         def __getslice__(self, start, stop):
             return self.__getitem__(slice(max(0, start), max(0, stop)))
+
         def __delslice__(self, start, stop):
             return self.__delitem__(slice(max(0, start), max(0, stop)))
+
         def __setslice__(self, start, stop, value):
             return self.__setitem__(slice(max(0, start), max(0, stop)), value)
+
 
 class ParentedTree(AbstractParentedTree):
     """
@@ -1289,6 +1405,7 @@ class ParentedTree(AbstractParentedTree):
     or ``MultiParentedTrees``.  Mixing tree implementations may result
     in incorrect parent pointers and in ``TypeError`` exceptions.
     """
+
     def __init__(self, node, children=None):
         self._parent = None
         """The parent of this Tree, or None if it has no parent."""
@@ -1303,11 +1420,12 @@ class ParentedTree(AbstractParentedTree):
                     child._parent = None
                     self._setparent(child, i)
 
-    def _frozen_class(self): return ImmutableParentedTree
+    def _frozen_class(self):
+        return ImmutableParentedTree
 
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
     # Methods
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
 
     def parent(self):
         """The parent of this tree, or None if it has no parent."""
@@ -1321,24 +1439,26 @@ class ParentedTree(AbstractParentedTree):
         ``ptree.parent.index(ptree)``, since the ``index()`` method
         returns the first child that is equal to its argument.
         """
-        if self._parent is None: return None
+        if self._parent is None:
+            return None
         for i, child in enumerate(self._parent):
-            if child is self: return i
-        assert False, 'expected to find self in self._parent!'
+            if child is self:
+                return i
+        assert False, "expected to find self in self._parent!"
 
     def left_sibling(self):
         """The left sibling of this tree, or None if it has none."""
         parent_index = self.parent_index()
         if self._parent and parent_index > 0:
-            return self._parent[parent_index-1]
-        return None # no left sibling
+            return self._parent[parent_index - 1]
+        return None  # no left sibling
 
     def right_sibling(self):
         """The right sibling of this tree, or None if it has none."""
         parent_index = self.parent_index()
-        if self._parent and parent_index < (len(self._parent)-1):
-            return self._parent[parent_index+1]
-        return None # no right sibling
+        if self._parent and parent_index < (len(self._parent) - 1):
+            return self._parent[parent_index + 1]
+        return None  # no right sibling
 
     def root(self):
         """
@@ -1361,10 +1481,9 @@ class ParentedTree(AbstractParentedTree):
         else:
             return self.parent().treeposition() + (self.parent_index(),)
 
-
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
     # Parent Management
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
 
     def _delparent(self, child, index):
         # Sanity checks
@@ -1378,13 +1497,13 @@ class ParentedTree(AbstractParentedTree):
     def _setparent(self, child, index, dry_run=False):
         # If the child's type is incorrect, then complain.
         if not isinstance(child, ParentedTree):
-            raise TypeError('Can not insert a non-ParentedTree '+
-                            'into a ParentedTree')
+            raise TypeError(
+                "Can not insert a non-ParentedTree " + "into a ParentedTree"
+            )
 
         # If child already has a parent, then complain.
         if child._parent is not None:
-            raise ValueError('Can not insert a subtree that already '
-                             'has a parent.')
+            raise ValueError("Can not insert a subtree that already " "has a parent.")
 
         # Set child's parent pointer & index.
         if not dry_run:
@@ -1408,6 +1527,7 @@ class MultiParentedTree(AbstractParentedTree):
     ``Trees`` or ``ParentedTrees``.  Mixing tree implementations may
     result in incorrect parent pointers and in ``TypeError`` exceptions.
     """
+
     def __init__(self, node, children=None):
         self._parents = []
         """A list of this tree's parents.  This list should not
@@ -1424,11 +1544,12 @@ class MultiParentedTree(AbstractParentedTree):
                     child._parents = []
                     self._setparent(child, i)
 
-    def _frozen_class(self): return ImmutableMultiParentedTree
+    def _frozen_class(self):
+        return ImmutableMultiParentedTree
 
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
     # Methods
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
 
     def parents(self):
         """
@@ -1451,9 +1572,11 @@ class MultiParentedTree(AbstractParentedTree):
 
         :type: list(MultiParentedTree)
         """
-        return [parent[index-1]
-                for (parent, index) in self._get_parent_indices()
-                if index > 0]
+        return [
+            parent[index - 1]
+            for (parent, index) in self._get_parent_indices()
+            if index > 0
+        ]
 
     def right_siblings(self):
         """
@@ -1465,15 +1588,19 @@ class MultiParentedTree(AbstractParentedTree):
 
         :type: list(MultiParentedTree)
         """
-        return [parent[index+1]
-                for (parent, index) in self._get_parent_indices()
-                if index < (len(parent)-1)]
+        return [
+            parent[index + 1]
+            for (parent, index) in self._get_parent_indices()
+            if index < (len(parent) - 1)
+        ]
 
     def _get_parent_indices(self):
-        return [(parent, index)
-                for parent in self._parents
-                for index, child in enumerate(parent)
-                if child is self]
+        return [
+            (parent, index)
+            for parent in self._parents
+            for index, child in enumerate(parent)
+            if child is self
+        ]
 
     def roots(self):
         """
@@ -1503,9 +1630,10 @@ class MultiParentedTree(AbstractParentedTree):
           for parent_index in ptree.parent_indices(parent):
               parent[parent_index] is ptree
         """
-        if parent not in self._parents: return []
-        else: return [index for (index, child) in enumerate(parent)
-                      if child is self]
+        if parent not in self._parents:
+            return []
+        else:
+            return [index for (index, child) in enumerate(parent) if child is self]
 
     def treepositions(self, root):
         """
@@ -1519,15 +1647,17 @@ class MultiParentedTree(AbstractParentedTree):
         if self is root:
             return [()]
         else:
-            return [treepos+(index,)
-                    for parent in self._parents
-                    for treepos in parent.treepositions(root)
-                    for (index, child) in enumerate(parent) if child is self]
+            return [
+                treepos + (index,)
+                for parent in self._parents
+                for treepos in parent.treepositions(root)
+                for (index, child) in enumerate(parent)
+                if child is self
+            ]
 
-
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
     # Parent Management
-    #/////////////////////////////////////////////////////////////////
+    # /////////////////////////////////////////////////////////////////
 
     def _delparent(self, child, index):
         # Sanity checks
@@ -1538,25 +1668,30 @@ class MultiParentedTree(AbstractParentedTree):
         # If the only copy of child in self is at index, then delete
         # self from child's parent list.
         for i, c in enumerate(self):
-            if c is child and i != index: break
+            if c is child and i != index:
+                break
         else:
             child._parents.remove(self)
 
     def _setparent(self, child, index, dry_run=False):
         # If the child's type is incorrect, then complain.
         if not isinstance(child, MultiParentedTree):
-            raise TypeError('Can not insert a non-MultiParentedTree '+
-                            'into a MultiParentedTree')
+            raise TypeError(
+                "Can not insert a non-MultiParentedTree " + "into a MultiParentedTree"
+            )
 
         # Add self as a parent pointer if it's not already listed.
         if not dry_run:
             for parent in child._parents:
-                if parent is self: break
+                if parent is self:
+                    break
             else:
                 child._parents.append(self)
 
+
 class ImmutableParentedTree(ImmutableTree, ParentedTree):
     pass
+
 
 class ImmutableMultiParentedTree(ImmutableTree, MultiParentedTree):
     pass
@@ -1648,11 +1783,13 @@ class ImmutableMultiParentedTree(ImmutableTree, MultiParentedTree):
 ## Parsing
 ######################################################################
 
+
 def bracket_parse(s):
     """
     Use Tree.read(s, remove_empty_top_bracketing=True) instead.
     """
     raise NameError("Use Tree.read(s, remove_empty_top_bracketing=True) instead.")
+
 
 def sinica_parse(s):
     """
@@ -1665,21 +1802,25 @@ def sinica_parse(s):
     :param s: The string to be converted
     :type s: str
     """
-    tokens = re.split(r'([()| ])', s)
+    tokens = re.split(r"([()| ])", s)
     for i in range(len(tokens)):
-        if tokens[i] == '(':
-            tokens[i-1], tokens[i] = tokens[i], tokens[i-1]     # pull nonterminal inside parens
-        elif ':' in tokens[i]:
-            fields = tokens[i].split(':')
-            if len(fields) == 2:                                # non-terminal
+        if tokens[i] == "(":
+            tokens[i - 1], tokens[i] = (
+                tokens[i],
+                tokens[i - 1],
+            )  # pull nonterminal inside parens
+        elif ":" in tokens[i]:
+            fields = tokens[i].split(":")
+            if len(fields) == 2:  # non-terminal
                 tokens[i] = fields[1]
             else:
                 tokens[i] = "(" + fields[-2] + " " + fields[-1] + ")"
-        elif tokens[i] == '|':
-            tokens[i] = ''
+        elif tokens[i] == "|":
+            tokens[i] = ""
 
     treebank_string = " ".join(tokens)
     return Tree.fromstring(treebank_string, remove_empty_top_bracketing=True)
+
 
 #    s = re.sub(r'^#[^\s]*\s', '', s)  # remove leading identifier
 #    s = re.sub(r'\w+:', '', s)       # remove role tags
@@ -1690,6 +1831,7 @@ def sinica_parse(s):
 ## Demonstration
 ######################################################################
 
+
 def demo():
     """
     A demonstration showing how Trees and Trees can be
@@ -1698,31 +1840,31 @@ def demo():
     and shows the results of calling several of their methods.
     """
 
-    #from nltk import Tree, ProbabilisticTree
+    # from nltk import Tree, ProbabilisticTree
 
     # Demonstrate tree parsing.
-    s = '(S (NP (DT the) (NN cat)) (VP (VBD ate) (NP (DT a) (NN cookie))))'
+    s = "(S (NP (DT the) (NN cat)) (VP (VBD ate) (NP (DT a) (NN cookie))))"
     t = Tree.fromstring(s)
     print("Convert bracketed string into tree:")
     print(t)
     print(t.__repr__())
 
     print("Display tree properties:")
-    print(t.label())         # tree's constituent type
-    print(t[0])             # tree's first child
-    print(t[1])             # tree's second child
+    print(t.label())  # tree's constituent type
+    print(t[0])  # tree's first child
+    print(t[1])  # tree's second child
     print(t.height())
     print(t.leaves())
     print(t[1])
-    print(t[1,1])
-    print(t[1,1,0])
+    print(t[1, 1])
+    print(t[1, 1, 0])
 
     # Demonstrate tree modification.
     the_cat = t[0]
-    the_cat.insert(1, Tree.fromstring('(JJ big)'))
+    the_cat.insert(1, Tree.fromstring("(JJ big)"))
     print("Tree modification:")
     print(t)
-    t[1,1,1] = Tree.fromstring('(NN cake)')
+    t[1, 1, 1] = Tree.fromstring("(NN cake)")
     print(t)
     print()
 
@@ -1758,12 +1900,17 @@ def demo():
     # print()
 
     # Demonstrate tree nodes containing objects other than strings
-    t.set_label(('test', 3))
+    t.set_label(("test", 3))
     print(t)
 
-__all__ = ['ImmutableTree',
-           'Tree', 'bracket_parse',
-           'sinica_parse', 'ParentedTree', 'MultiParentedTree',
-           'ImmutableParentedTree', 'ImmutableMultiParentedTree']
 
-
+__all__ = [
+    "ImmutableTree",
+    "Tree",
+    "bracket_parse",
+    "sinica_parse",
+    "ParentedTree",
+    "MultiParentedTree",
+    "ImmutableParentedTree",
+    "ImmutableMultiParentedTree",
+]

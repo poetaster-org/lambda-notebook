@@ -3,9 +3,15 @@ import lamb
 from lamb import parsing, utils, lang
 from lamb.utils import *
 
-from IPython.core.magic import (Magics, magics_class, line_magic,
-                                cell_magic, line_cell_magic)
+from IPython.core.magic import (
+    Magics,
+    magics_class,
+    line_magic,
+    cell_magic,
+    line_cell_magic,
+)
 import IPython.display
+
 
 def check_shadowing(words):
     l = list()
@@ -13,6 +19,7 @@ def check_shadowing(words):
         if keyword.iskeyword(k):
             l.append(k)
     return l
+
 
 def process_items(fun, *i, env=None):
     """This function processes one or more lexical entries in various possible
@@ -39,21 +46,26 @@ def process_items(fun, *i, env=None):
         elif isinstance(item, lang.Item):
             result.append(fun(item))
         else:
-            result.append(item) # silently ignore...
+            result.append(item)  # silently ignore...
     if len(result) == 0:
         return None
     return result
 
+
 lamb_magics = set()
+
+
 def reset_envs():
     global lamb_magics
     for m in lamb_magics:
         m.reset()
 
+
 @magics_class
 class LambMagics(Magics):
     specials = dict()
     specials_post = dict()
+
     def __init__(self, shell):
         super(LambMagics, self).__init__(shell)
         global lamb_magics
@@ -65,8 +77,10 @@ class LambMagics(Magics):
     def shadow_warnings(self, dict):
         l = check_shadowing(dict.keys())
         for k in l:
-            print("Warning: variable name '%s' is reserved and will be "
-                "shadowed in python" % k)
+            print(
+                "Warning: variable name '%s' is reserved and will be "
+                "shadowed in python" % k
+            )
 
     @line_cell_magic
     def lamb(self, line, cell=None):
@@ -79,14 +93,13 @@ class LambMagics(Magics):
             if len(line) > 0:
                 r = self.control_line(line)
                 if r is not None:
-                    return r #TODO fix this up, not right
-            (accum, env) = parsing.parse(cell, self.env,
-                                                ambiguity=self.cur_ambiguity)
+                    return r  # TODO fix this up, not right
+            (accum, env) = parsing.parse(cell, self.env, ambiguity=self.cur_ambiguity)
             self.env = env
             self.control_line(line, post=True, accum=accum)
         self.push_accum(accum)
         IPython.display.display(parsing.latex_output(accum, self.env))
-    
+
     def push_accum(self, accum):
         self.shadow_warnings(accum)
         self.shell.push(accum)
@@ -104,7 +117,7 @@ class LambMagics(Magics):
             else:
                 r = self.control(a.strip())
             if r is not None:
-                return r # TODO: fix
+                return r  # TODO: fix
         return None
 
     def control_post(self, cmd, accum):
@@ -139,13 +152,14 @@ class LambMagics(Magics):
         self.shell.push(accum)
         return result
 
+
 def setup_magics():
     try:
         ip = get_ipython()
-    except: # fail silently if there's no ipython kernel
+    except:  # fail silently if there's no ipython kernel
         return
     ip.register_magics(LambMagics)
-    reset_envs() # for imp.reload calls
-    
-setup_magics()
+    reset_envs()  # for imp.reload calls
 
+
+setup_magics()
